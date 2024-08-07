@@ -18,8 +18,6 @@ END:    E   3
 
 */
 
-typedef std::pair<int, int> coordinates;
-
 
 enum Maze {
     SPACE,
@@ -35,89 +33,56 @@ enum Dir {
     LEFT
 };
 
-coordinates startpos{};
-coordinates endpos{};
-
+std::pair<int, int> endCoords;
 
 class MazeNode {
 private:
-
-public:
-    int G; // distance from start node
     int H; // distance from end node
 
-    Maze getNodeType() { return nodetype; } // just get nodetype later
-    Maze nodetype;
-    MazeNode* neighbours[4]{};
-    MazeNode* connection{};
-    coordinates coords;
-
-    int getF() { return G + H; }
-    int getG() { return G; }
-
-    void calcH(coordinates nodePos) { this->H = fabs(nodePos.first - endpos.first) + fabs(nodePos.second - endpos.second); }
-
-    MazeNode(Maze nodetype, coordinates coords) {
+public:
+    MazeNode(Maze nodetype, int id) {
         this->nodetype = nodetype;
-        this->G = inf;
+        this->id = id;
+        this->G = 0;
         this->H = inf;
-        this->coords = coords;
     }
-
-    bool operator==(MazeNode otherNode) {
- 
-        for (int i = 0; i < MAXNEIGHBOURS; i++) {
-            // if only one null
-            if ((this->neighbours[i] == NULL && otherNode.neighbours[i] != NULL) || (this->neighbours[i] != NULL && otherNode.neighbours[i] == NULL)) {
-                std::cout << "Not same\n";
-                return false;
-            }
-
-            // if both null
-            if (this->neighbours[i] == NULL)
-                continue;
-
-            // if one pair identical
-            if (this->neighbours[i]->coords.first == otherNode.neighbours[i]->coords.first && this->neighbours[i]->coords.second == otherNode.neighbours[i]->coords.second) {
-                std::cout << "Same\n";
-                return true;
-            }
-
-        }
-
-        return (this->neighbours == otherNode.neighbours);
+    void setH(int i, int j) {
+        this->H = fabs(i - endCoords.first) + fabs(j - endCoords.second);
     }
+    int G; // distance from start node
+    void setG(int val) { this->G = val; }
+    int getH() { return H; }
+    int getF() { return G + H; }
 
-    bool operator!=(MazeNode otherNode) {
-        return !(this->neighbours == otherNode.neighbours);
-    }
+    int id = -1;
+    Maze nodetype;
+    MazeNode* connection = NULL;
+    MazeNode* neighbours[4] = {NULL, NULL, NULL, NULL}; // UP, DOWN, RIGHT, LEFT
+
+    bool operator==(MazeNode otherNode) { return id == otherNode.id; }
+
 };
 
 std::vector<std::vector<MazeNode>> grid{}; // 2D vector for the grid
 int maxSize = 0; // Grid is square shaped, find it's largest between both dimensions
-
+int newid = 0; // ID to be assigned to each piece
+MazeNode* startNode;
+MazeNode* endNode;
 
 
 // Functions
 void setColour(sf::RectangleShape& shape, int val);
 void readGrid();
-void aStarGen();
+bool isValid(int i, int j);
+void getAstar();
 
-
+// RETRY
 
 
 int main() {
     readGrid();
 
-    // Print vector
-    /*
-    for (int i = 0; i < grid.size(); i++) {
-        for (int j = 0; j < grid[i].size(); j++) {
-            std::cout << grid[i][j] << " ";
-        }
-        std::cout << "\n";
-    }
-    */
+    getAstar();
 
 
     // create the window
@@ -150,16 +115,11 @@ int main() {
         {
             for (int j = 0; j < maxSize; j++) {
                 box.setPosition(i * winHoriz / maxSize, j * winVert / maxSize);
-                setColour(box, grid[j][i].getNodeType());
+                setColour(box, grid[j][i].nodetype);
                 window.draw(box);
             }
         }
 
-        static bool generated = false;
-        if (!generated) {
-            aStarGen();
-            generated = true;
-        }
         sf::sleep(sf::milliseconds(200));
 
 
@@ -179,6 +139,9 @@ void setColour(sf::RectangleShape& shape, int val) {
     }
 }
 
+/*
+Read the TXT file and generate a grid
+*/
 void readGrid()
 {
     grid.clear();
@@ -195,14 +158,13 @@ void readGrid()
         std::vector<MazeNode> tempVec{};
         for (char& c : str)
         {
-            //std::cout << grid.size() << ", " << tempVec.size() << ") ";
 
             switch (c)
             {
-            case 'O': tempVec.push_back(MazeNode(Maze::SPACE, { grid.size(), tempVec.size() })); break;
-            case '#': tempVec.push_back(MazeNode(Maze::WALL, { grid.size(), tempVec.size() })); break;
-            case 'M': tempVec.push_back(MazeNode(Maze::MOUSE, { grid.size(), tempVec.size() })); break;
-            case 'E': tempVec.push_back(MazeNode(Maze::END, { grid.size(), tempVec.size() })); break;
+            case 'O': tempVec.push_back(MazeNode(Maze::SPACE, newid++)); break;
+            case '#': tempVec.push_back(MazeNode(Maze::WALL, newid++)); break;
+            case 'M': tempVec.push_back(MazeNode(Maze::MOUSE, newid++)); break;
+            case 'E': tempVec.push_back(MazeNode(Maze::END, newid++)); endCoords = {grid.size(), tempVec.size()-1}; break;
             default: std::cout << "INVALID CHARACTER"; abort;
             }
         }
@@ -221,155 +183,124 @@ void readGrid()
         maxSize = grid.size();
 
     // Square-ify the grid
-    while (grid.size() < maxSize)
+    while (grid.size() < maxSize) // Add new rows
         grid.push_back({});
-    for (int i = 0; i < grid.size(); i++) {
+    for (int i = 0; i < grid.size(); i++) { // For each row, make sure they are the same length
         while (grid[i].size() < maxSize)
-            grid[i].push_back(MazeNode(Maze::WALL, { i, grid[i].size()}));
+            grid[i].push_back(MazeNode(Maze::WALL, newid++));
     }
 
-    // Re-iterate through nodes to: set neighbours and set H
+
+    // Reiterate through grid and connect all the pieces that are non wall
+    // [i][j] : [Row][Column]
+
+    int x, y;
+
     for (int i = 0; i < grid.size(); i++) {
         for (int j = 0; j < grid[i].size(); j++) {
 
-            // Check if start or end node
-            Maze nodeType = grid[i][j].getNodeType();
-            
-            if (nodeType == Maze::END) {
-                endpos = { i, j };
-                grid[i][j].calcH({ i,j });
-                continue; // No need to calculate neighbours for end node
-            }
-            else if (nodeType == Maze::WALL)
-                continue; // No need to calculate neighbours for walls
-            else if (nodeType == Maze::MOUSE) {
-                startpos = { i, j };
-                grid[i][j].G = 0;
-            }
+            // Get pointers to start and end
+            if (grid[i][j].nodetype == Maze::MOUSE)
+                startNode = &grid[i][j];
+            if (grid[i][j].nodetype == Maze::END)
+                endNode = &grid[i][j];
 
-            grid[i][j].calcH({ i,j });
-
-
-            // Set all neighbours
-            // (0,0) is Top-Left
-            int x;
-            int y;
+            // Also set up their H
+            grid[i][j].setH(i,j);
 
             // UP
+            y = i-1;
             x = j;
-            y = i - 1;
-            // If valid neighbour then add it
-            if (grid[y][x].getNodeType() != Maze::WALL) {
-                grid[i][j].neighbours[Dir::UP] = &grid[y][x]; // Get pointer to neighbours
-                /*
-                grid[y][x].nodetype = Maze::END; // Neighbour set
-                grid[i][j].nodetype = Maze::MOUSE; // Node set
-                */
-                //std::cout << "(" << i << ", " << j << ")->(" << x << ", " << y << ")";
+            if (isValid(y,x) && grid[y][x].nodetype != Maze::WALL) {
+                grid[i][j].neighbours[0] = &grid[y][x];
             }
 
             // DOWN
-            x = j;
             y = i + 1;
-            if (grid[y][x].getNodeType() != Maze::WALL) {
-                grid[i][j].neighbours[Dir::DOWN] = &grid[y][x]; // Get pointer to neighbours
-            }
-
-            // LEFT
-            x = j - 1;
-            y = i;
-            if (grid[y][x].getNodeType() != Maze::WALL) {
-                grid[i][j].neighbours[Dir::LEFT] = &grid[y][x]; // Get pointer to neighbours
+            x = j;
+            if (isValid(y, x) && grid[y][x].nodetype != Maze::WALL) {
+                grid[i][j].neighbours[1] = &grid[y][x];
             }
 
             // RIGHT
-            x = j + 1;
             y = i;
-            if (grid[y][x].getNodeType() != Maze::WALL) {
-                grid[i][j].neighbours[Dir::RIGHT] = &grid[y][x]; // Get pointer to neighbours
+            x = j + 1;
+            if (isValid(y, x) && grid[y][x].nodetype != Maze::WALL) {
+                grid[i][j].neighbours[2] = &grid[y][x];
+            }
+
+            // LEFT
+            y = i;
+            x = j - 1;
+            if (isValid(y, x) && grid[y][x].nodetype != Maze::WALL) {
+                grid[i][j].neighbours[3] = &grid[y][x];
             }
 
         }
     }
-
 
 }
 
-void aStarGen() {
-    std::vector<MazeNode> toSearch = { grid[startpos.first][startpos.second] };
-    std::vector<MazeNode> processed = {};
+// [i][j] : [Row][Column]
+bool isValid(int i, int j) {
+    return (i >= 0 && j >= 0 && i < maxSize && j < maxSize);
+}
 
-    // while there is a node to search
-    while (!toSearch.empty()) {
 
-        MazeNode current = toSearch[0];
 
-        // find node with smallest F on nodes to search
-        for (MazeNode t : toSearch) {
-            //std::cout << t.getF() << "\n";
-            if (t.getF() < current.getF() || t.getF() == current.getF() && t.H < current.H)
-                current = t;
+void getAstar() {
+
+    MazeNode* exampleNode = startNode;
+
+
+    std::vector<MazeNode*> openList = { startNode };
+    std::vector<MazeNode*> closeList = {};
+
+    while (!openList.empty()) {
+
+        MazeNode* currentNode = openList[0];
+
+        // Find open node with smallest F OR equivalent but less optimistic
+        for (MazeNode* t : openList) {
+            if (t->getF() < currentNode->getF() || (t->getF() == currentNode->getF() && t->getH() < currentNode->getH()))
+                currentNode = t;
         }
 
-        processed.push_back(current);
-        toSearch.erase(std::remove(toSearch.begin(), toSearch.end(), current), toSearch.end());
+        openList.erase(std::remove(openList.begin(), openList.end(), currentNode), openList.end());
+        closeList.push_back(currentNode);
 
-        //std::cout << "(" << current.coords.first << ", " << current.coords.second << ")\n";
-
-        // if endnode found
-        if (current.nodetype == Maze::END) {
-            std::cout << "Endnode found :)\n";
-            break;
+        if (currentNode == endNode) {
+            std::cout << "You win!";
+            return;
         }
 
+        // Loop for each neighbour
+        for (MazeNode* neighbour : currentNode->neighbours) {
 
-
-
-
-        // for each neighbour
-        for (int i = 0; i < MAXNEIGHBOURS; i++) {
-
-            //std::cout << "Neighbour[" << i << "] (" << current.neighbours[i]->coords.first << ")\n";
-            // If invalid neighbour, continue
-            if (current.neighbours[i] == NULL || std::find(processed.begin(), processed.end(), *current.neighbours[i]) == processed.end())
+            if (neighbour == NULL)
                 continue;
 
-            MazeNode* neighbour = current.neighbours[i];
+            // if in closed list, ignore and check next neighbour
+            if (std::find(closeList.begin(), closeList.end(), neighbour) != closeList.end())
+                continue;
 
-            // Bool for whether neighbour is in `toSearch`
-            bool inSearch = std::find(toSearch.begin(), toSearch.end(), *neighbour) != toSearch.end();
+            // If child is in openList and this connection would be costlier, don't change anything
+            if (std::find(openList.begin(), openList.end(), neighbour) != openList.end() && neighbour->G < currentNode->G + 1)
+                continue;
 
+            neighbour->G = currentNode->G + 1;
+            neighbour->connection = currentNode;
 
-            // Get costToNeighbour
-            int costToNeighbour = current.G + 1;
-
-            // if not inSearch or the calculated neighbour's G cost is lower than neighbour's set G cost
-            if (!inSearch || costToNeighbour < neighbour->G) {
-                neighbour->G = costToNeighbour; // Adjust G value of neighbour
-                neighbour->connection = &current; // set connection
-
-                // if not inSearch
-                if (!inSearch) {
-                    toSearch.push_back(*neighbour);
-                    std::cout << "+(" << neighbour->coords.first << ", " << neighbour->coords.second << ")\n";
-                }
-                        // Set H (ALREADY DONE)
-                        // Add neighbour to `toSearch`
-
-            }
-
+            openList.push_back(neighbour);
 
         }
-
-        
-        for (int i = 0; i < toSearch.size(); i++)
-            std::cout << toSearch[i].coords.first << ", " << toSearch[i].coords.second << "\n";
-        //sf::sleep(sf::milliseconds(1000));
 
     }
 
-    
-    //std::cout << grid[endpos.first][endpos.second].connection->coords.first << ", " << grid[endpos.first][endpos.second].connection->coords.second;
 
-    std::cout << "Done\n";
+    return;
+}
+
+void printResult() {
+
 }
