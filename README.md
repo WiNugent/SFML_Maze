@@ -11,9 +11,9 @@ The project will create a maze based off of what was inputted into the maze.txt 
 ![txt file creating a maze](images/mazeprogram.png)
 
 
-### Here is what each symbol represents in the txt file
+## Here is what each symbol represents in the txt file
 
-SPACE:  O	(Can traverse across)
-WALL:   #	(Cannot traverse across)
-MOUSE:  M	(Where the maze starts)
-END:    E	(Where the maze ends)
+### SPACE: O (Can traverse across)
+### WALL: # (Cannot traverse across)
+### MOUSE: M (Where the maze starts)
+### END: E (Where the maze ends)
