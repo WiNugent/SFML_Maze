@@ -8,6 +8,7 @@
 #define PMARGIN 1
 #define inf 999999
 #define MAXNEIGHBOURS 4
+#define DELAY 100
 
 /*
 
@@ -23,7 +24,10 @@ enum Maze {
     SPACE,
     WALL,
     MOUSE,
-    END
+    END,
+    OPENLIST,
+    CLOSELIST,
+    PATH
 };
 
 enum Dir {
@@ -74,7 +78,9 @@ MazeNode* endNode;
 void setColour(sf::RectangleShape& shape, int val);
 void readGrid();
 bool isValid(int i, int j);
-void getAstar();
+void getAstar(sf::RenderWindow& window, sf::RectangleShape box, int winHoriz, int winVert);
+void update_display(sf::RenderWindow &window, sf::RectangleShape box, int winHoriz, int winVert);
+void setPath(sf::RenderWindow& window, sf::RectangleShape box, int winHoriz, int winVert);
 
 // RETRY
 
@@ -82,12 +88,12 @@ void getAstar();
 int main() {
     readGrid();
 
-    getAstar();
 
 
     // create the window
-    sf::RenderWindow window(sf::VideoMode(400, 400), "My window");
+    sf::RenderWindow window(sf::VideoMode(600, 600), "My window");
 
+    
 
     const int winHoriz = window.getSize().x;
     const int winVert = window.getSize().y;
@@ -95,9 +101,17 @@ int main() {
     box.setFillColor(sf::Color::White);
 
 
-    // run the program as long as the window is open
-    while (window.isOpen())
-    {
+    
+
+    // clear the window with black color
+    window.clear(sf::Color::Black);
+
+    sf::sleep(sf::milliseconds(10000));
+
+    getAstar(window, box, winHoriz, winVert);
+
+
+    while (window.isOpen()) {
         // check all the window's events that were triggered since the last iteration of the loop
         sf::Event event;
         while (window.pollEvent(event))
@@ -106,25 +120,6 @@ int main() {
             if (event.type == sf::Event::Closed)
                 window.close();
         }
-
-        // clear the window with black color
-        window.clear(sf::Color::Black);
-
-        // draw everything here...
-        for (int i = 0; i < maxSize; i++)
-        {
-            for (int j = 0; j < maxSize; j++) {
-                box.setPosition(i * winHoriz / maxSize, j * winVert / maxSize);
-                setColour(box, grid[j][i].nodetype);
-                window.draw(box);
-            }
-        }
-
-        sf::sleep(sf::milliseconds(200));
-
-
-        // end the current frame
-        window.display();
     }
 
     return 0;
@@ -136,6 +131,9 @@ void setColour(sf::RectangleShape& shape, int val) {
     case Maze::WALL: shape.setFillColor(sf::Color(125, 125, 125)); break;    // WALL
     case Maze::MOUSE: shape.setFillColor(sf::Color::Green); break;            // MOUSE
     case Maze::END: shape.setFillColor(sf::Color::Red); break;              // END
+    case Maze::OPENLIST: shape.setFillColor(sf::Color(255, 200, 200)); break;              // OPENLIST
+    case Maze::CLOSELIST: shape.setFillColor(sf::Color::Yellow); break;              // CLOSELIST
+    case Maze::PATH: shape.setFillColor(sf::Color(255, 125, 125)); break;              // PATH
     }
 }
 
@@ -248,13 +246,18 @@ bool isValid(int i, int j) {
 
 
 
-void getAstar() {
+void getAstar(sf::RenderWindow& window, sf::RectangleShape box, int winHoriz, int winVert) {
+
+
 
     MazeNode* exampleNode = startNode;
 
 
     std::vector<MazeNode*> openList = { startNode };
     std::vector<MazeNode*> closeList = {};
+
+    startNode->nodetype = Maze::OPENLIST;
+    update_display(window, box, winHoriz, winVert);
 
     while (!openList.empty()) {
 
@@ -269,8 +272,12 @@ void getAstar() {
         openList.erase(std::remove(openList.begin(), openList.end(), currentNode), openList.end());
         closeList.push_back(currentNode);
 
+        currentNode->nodetype = Maze::CLOSELIST;
+        update_display(window, box, winHoriz, winVert);
+
         if (currentNode == endNode) {
             std::cout << "You win!";
+            setPath(window, box, winHoriz, winVert);
             return;
         }
 
@@ -293,14 +300,52 @@ void getAstar() {
 
             openList.push_back(neighbour);
 
+            neighbour->nodetype = Maze::OPENLIST;
+            update_display(window, box, winHoriz, winVert);
+
         }
 
     }
 
-
     return;
 }
 
-void printResult() {
+void update_display(sf::RenderWindow &window, sf::RectangleShape box, int winHoriz, int winVert) {
+    // draw everything here...
+    for (int i = 0; i < maxSize; i++)
+    {
+        for (int j = 0; j < maxSize; j++) {
+            box.setPosition(i * winHoriz / maxSize, j * winVert / maxSize);
+            setColour(box, grid[j][i].nodetype);
+            window.draw(box);
+        }
+    }
+    window.display();
+
+    sf::sleep(sf::milliseconds(DELAY));
+
+
+}
+
+
+// Display winning path
+void setPath(sf::RenderWindow& window, sf::RectangleShape box, int winHoriz, int winVert) {
+    
+
+    MazeNode* followedNode = endNode;
+
+    while (followedNode != NULL) {
+
+        followedNode->nodetype = Maze::PATH;
+        update_display(window, box, winHoriz, winVert);
+
+        followedNode = followedNode->connection;
+
+    }
+
+    startNode->nodetype = Maze::MOUSE;
+    endNode->nodetype = Maze::END;
+    update_display(window, box, winHoriz, winVert);
+
 
 }
