@@ -106,8 +106,6 @@ int main() {
     // clear the window with black color
     window.clear(sf::Color::Black);
 
-    sf::sleep(sf::milliseconds(10000));
-
     getAstar(window, box, winHoriz, winVert);
 
 
