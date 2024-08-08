@@ -4,7 +4,7 @@
 
 # ABOUT:
 
-The purpose of this project is to create and visualize the paths that the A* algorithm.
+The purpose of this project is to create and visualize the paths that the A* algorithm takes to find the exit.
 
 The project will create a maze based off of what was inputted into the maze.txt file and visualize it.
 
