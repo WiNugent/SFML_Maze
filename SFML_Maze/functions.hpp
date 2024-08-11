@@ -8,16 +8,13 @@
 #include <string>
 #include <cmath>
 
-
-enum Maze;
-
-enum Dir;
-
-
-#define PMARGIN 1
+#define PMARGIN 2
 #define inf 999999
 #define MAXNEIGHBOURS 4
 #define DELAY 100
+
+enum Maze;
+enum Dir;
 
 class MazeNode {
 private:
@@ -25,10 +22,9 @@ private:
 public:
     MazeNode(Maze nodetype);
     void setH(int i, int j);
-    int G; // distance from start node
-    void setG(int val);
     int getH();
     int getF();
+    int G; // distance from start node
 
     Maze nodetype;
     MazeNode* connection = NULL;
@@ -36,23 +32,12 @@ public:
 
 };
 
-
-
-extern std::vector<std::vector<MazeNode>> grid; // 2D vector for the grid
+// Global variables
 extern MazeNode* startNode;
 extern MazeNode* endNode;
-
-extern int maxSize; // Grid is square shaped, find its largest between both dimensions
+extern std::vector<std::vector<MazeNode>> grid; // 2D vector for the grid of nodes
 extern std::pair<int, int> endCoords;
-
-/*
-SPACE:  O   0
-WALL:   #   1
-MOUSE:  M   2
-END:    E   3
-*/
-
-
+extern int maxSize; // Grid is square shaped, find largest between its Row & Col
 
 
 // Functions

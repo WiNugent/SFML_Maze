@@ -9,7 +9,6 @@ enum Maze {
     CLOSELIST,
     PATH
 };
-
 enum Dir {
     UP,
     DOWN,
@@ -23,9 +22,9 @@ MazeNode::MazeNode(Maze nodetype) {
     this->H = inf;
 }
 void MazeNode::setH(int i, int j) { this->H = fabs(i - endCoords.first) + fabs(j - endCoords.second); }
-void MazeNode::setG(int val) { this->G = val; }
 int MazeNode::getH() { return H; }
 int MazeNode::getF() { return G + H; }
+
 
 std::vector<std::vector<MazeNode>> grid{}; // 2D vector for the grid
 MazeNode* startNode;
@@ -36,18 +35,22 @@ std::pair<int, int> endCoords;
 
 void setColour(sf::RectangleShape& shape, int val) {
     switch (val) {
-    case Maze::SPACE: shape.setFillColor(sf::Color::White); break;            // SPACE
-    case Maze::WALL: shape.setFillColor(sf::Color(125, 125, 125)); break;    // WALL
-    case Maze::MOUSE: shape.setFillColor(sf::Color::Green); break;            // MOUSE
-    case Maze::END: shape.setFillColor(sf::Color::Red); break;              // END
-    case Maze::OPENLIST: shape.setFillColor(sf::Color(255, 200, 200)); break;              // OPENLIST
-    case Maze::CLOSELIST: shape.setFillColor(sf::Color::Yellow); break;              // CLOSELIST
-    case Maze::PATH: shape.setFillColor(sf::Color(255, 125, 125)); break;              // PATH
+    case Maze::SPACE: shape.setFillColor(sf::Color::White); break;              // SPACE
+    case Maze::WALL: shape.setFillColor(sf::Color(125, 125, 125)); break;       // WALL
+    case Maze::MOUSE: shape.setFillColor(sf::Color::Green); break;              // MOUSE
+    case Maze::END: shape.setFillColor(sf::Color::Red); break;                  // END
+    case Maze::OPENLIST: shape.setFillColor(sf::Color(255, 200, 200)); break;   // OPENLIST
+    case Maze::CLOSELIST: shape.setFillColor(sf::Color::Yellow); break;         // CLOSELIST
+    case Maze::PATH: shape.setFillColor(sf::Color(255, 125, 125)); break;       // PATH
     }
 }
 
 /*
-Read the TXT file and generate a grid
+Read the TXT file and generate a grid with the following characters
+SPACE:  O
+WALL:   #
+MOUSE:  M
+END:    E
 */
 void readGrid()
 {
@@ -149,6 +152,7 @@ void readGrid()
 }
 
 // [i][j] : [Row][Column]
+// Check to make sure that grind index is valid
 bool isValid(int i, int j) {
     return (i >= 0 && j >= 0 && i < maxSize && j < maxSize);
 }
@@ -232,8 +236,6 @@ void update_display(sf::RenderWindow& window, sf::RectangleShape box) {
     window.display();
 
     sf::sleep(sf::milliseconds(DELAY));
-
-
 }
 
 
@@ -244,12 +246,10 @@ void setPath(sf::RenderWindow& window, sf::RectangleShape box) {
     MazeNode* followedNode = endNode;
 
     while (followedNode != NULL) {
-
         followedNode->nodetype = Maze::PATH;
         update_display(window, box);
 
         followedNode = followedNode->connection;
-
     }
 
     startNode->nodetype = Maze::MOUSE;

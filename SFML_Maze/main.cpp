@@ -1,26 +1,20 @@
-
-
 #include "functions.hpp"
-
-
 
 
 int main() {
 
-    // create the window
-    sf::RenderWindow window(sf::VideoMode(600, 600), "My window");
-
-    readGrid();
-    
-    sf::RectangleShape box(sf::Vector2f(window.getSize().x / maxSize - PMARGIN, window.getSize().y / maxSize - PMARGIN));
-    box.setFillColor(sf::Color::White);
-
-
-    
-
-    // clear the window with black color
+    // create the window & clear the window with black color
+    sf::RenderWindow window(sf::VideoMode(600, 600), "SFML Maze");
     window.clear(sf::Color::Black);
 
+    // Set up the maze grid
+    readGrid();
+
+    sf::RectangleShape box(sf::Vector2f(window.getSize().x / maxSize - PMARGIN, window.getSize().y / maxSize - PMARGIN));
+    box.setFillColor(sf::Color::White);
+    
+
+    // Initiate the pathfinding algorithm
     getAstar(window, box);
 
 
